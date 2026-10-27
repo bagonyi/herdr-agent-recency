@@ -16,7 +16,8 @@ Agents without a time follow, in Herdr's own order of state changes.
 Herdr runs this script on agent status changes, closed panes, tabs and
 spaces, and at startup. Every run reconciles all agents from Herdr's current state instead
 of acting on the single event, so a missed event is corrected by the next
-run. Times are kept by pane in the state directory, so they survive a server
+run. While one run waits for its turn, further events start none (see
+turn). Times are kept by pane in the state directory, so they survive a server
 restart, which drops Herdr's tokens and its agents panel order. The first
 run in a session knows no agent's last activity, only that the agent whose
 change started it changed just now: the others get a time once they next
@@ -72,8 +73,6 @@ SESSION = os.environ.get("HERDR_SOCKET_PATH", "")
 ACTIVITY_FILE = os.path.join(STATE_DIR, "activity.json")
 # Session sockets whose agents panel keeps Herdr's own order.
 ORDER_OFF_FILE = os.path.join(STATE_DIR, "order_off.json")
-# Events after which panes may be gone.
-CLOSE_EVENTS = ("startup", "pane.closed", "tab.closed", "workspace.closed")
 
 
 def herdr(*args):
@@ -167,12 +166,30 @@ def order_on(toggle):
 
 
 @contextmanager
-def single_run():
-    """Serialize runs; Herdr may start several hooks at once."""
+def turn(coalesce):
+    """Wait for this run's turn, as Herdr may start several hooks at once,
+    and yield whether to run.
+
+    With `coalesce`, a run gives up while another one is already waiting for
+    its turn: that one starts once the current run ends, and reconciles all
+    that has happened by then. So a burst of events, as when a restarted
+    server finds its agents again, starts at most two runs at a time instead
+    of one per event. Herdr runs at most 32 plugin commands at once, across
+    all plugins.
+    """
     os.makedirs(STATE_DIR, exist_ok=True)
-    with open(os.path.join(STATE_DIR, "reconcile.lock"), "w") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
-        yield
+    with open(os.path.join(STATE_DIR, "waiting.lock"), "w") as waiting, open(
+        os.path.join(STATE_DIR, "reconcile.lock"), "w"
+    ) as running:
+        try:
+            fcntl.flock(waiting, fcntl.LOCK_EX | (fcntl.LOCK_NB if coalesce else 0))
+        except BlockingIOError:
+            yield False
+            return
+        fcntl.flock(running, fcntl.LOCK_EX)
+        # The next run can wait behind this one now.
+        fcntl.flock(waiting, fcntl.LOCK_UN)
+        yield True
 
 
 def event_pane(event):
@@ -192,7 +209,8 @@ def reconcile(event):
     first_run = SESSION not in activity
     panes = activity.get(SESSION, {})
 
-    if event in CLOSE_EVENTS and panes:
+    # Every run looks, as the run for a close event may have been skipped.
+    if panes:
         existing = {pane["pane_id"] for pane in herdr("pane", "list")["panes"]}
         panes = {pane_id: entry for pane_id, entry in panes.items() if pane_id in existing}
 
@@ -213,14 +231,21 @@ def reconcile(event):
     save_json(ACTIVITY_FILE, activity)
 
 
+def run(toggle):
+    try:
+        reconcile(os.environ.get("HERDR_PLUGIN_EVENT"))
+    finally:
+        # Set again on every run: Herdr forgets it when its server
+        # stops, and runs no startup hook when the plugin is linked.
+        if order_on(toggle):
+            request("agent.view.set", VIEW)
+        else:
+            request("agent.view.clear", {"source": SOURCE})
+
+
 if __name__ == "__main__":
-    with single_run():
-        try:
-            reconcile(os.environ.get("HERDR_PLUGIN_EVENT"))
-        finally:
-            # Set again on every run: Herdr forgets it when its server
-            # stops, and runs no startup hook when the plugin is linked.
-            if order_on(toggle="--toggle" in sys.argv[1:]):
-                request("agent.view.set", VIEW)
-            else:
-                request("agent.view.clear", {"source": SOURCE})
+    toggle = "--toggle" in sys.argv[1:]
+    # A toggle always runs: a waiting run wouldn't make its change.
+    with turn(coalesce=not toggle) as my_turn:
+        if my_turn:
+            run(toggle)

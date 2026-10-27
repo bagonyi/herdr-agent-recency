@@ -19,7 +19,9 @@ started. The time reads 14:32 for today, Mon 14:32 for the past week and
 ## How it works
 
 Herdr runs the plugin when an agent's status changes, when a pane, tab or
-space closes, and once at startup. There is no background process. Each run
+space closes, and once at startup. There is no background process, and while
+one run waits for its turn, further events start none, so a burst of them, as
+after a server restart, doesn't crowd out other plugins' commands. Each run
 checks every agent against the times it has kept, so a missed event is
 corrected on the next run, and reports each agent's time to Herdr as two pane
 tokens:
