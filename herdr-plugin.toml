@@ -1,0 +1,34 @@
+id = "bagonyi.agent-recency"
+name = "Agent Recency"
+version = "0.1.0"
+min_herdr_version = "0.9.3"
+description = "Lists agents by their last activity and shows its time ($last in agent rows)"
+platforms = ["linux", "macos"]
+
+# Every run reconciles all agents, so each hook runs the same command.
+
+[[startup]]
+command = ["python3", "agent_recency.py"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["python3", "agent_recency.py"]
+
+# Closing forgets the closed panes' times.
+[[events]]
+on = "pane.closed"
+command = ["python3", "agent_recency.py"]
+
+[[events]]
+on = "tab.closed"
+command = ["python3", "agent_recency.py"]
+
+[[events]]
+on = "workspace.closed"
+command = ["python3", "agent_recency.py"]
+
+[[actions]]
+id = "toggle-order"
+title = "Order agents by last activity, or as before"
+contexts = ["workspace"]
+command = ["python3", "agent_recency.py", "--toggle"]
