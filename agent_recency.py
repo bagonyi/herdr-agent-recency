@@ -14,13 +14,16 @@ latest activity first, by the `$last_at` token (seconds since the epoch).
 Agents without a time follow, in Herdr's own order of state changes.
 
 Herdr runs this script on agent status changes, closed panes, tabs and
-spaces, and at startup. Every run reconciles all agents from Herdr's current state instead
-of acting on the single event, so a missed event is corrected by the next
-run. While one run waits for its turn, further events start none (see
-turn). Times are kept by pane in the state directory, so they survive a server
-restart, which drops Herdr's tokens and its agents panel order. The first
-run in a session knows no agent's last activity, only that the agent whose
-change started it changed just now: the others get a time once they next
+spaces, and at startup. Every run reconciles all agents from Herdr's current
+state instead of acting on the single event, so a missed event is corrected
+by the next run. While one run waits for its turn, further events start none
+(see turn). Times are kept by pane in the state directory, so they survive a
+server restart, which drops Herdr's tokens and its agents panel order.
+
+The first run in a session knows no agent's last activity, only that the
+agent whose change started it changed just now. A Claude agent without a
+time gets the time of its conversation's last message, from Claude's own
+file (see claude_last_message); other agents get a time once they next
 change.
 
 Usage:
@@ -29,6 +32,7 @@ Usage:
                              in this session, or start again, then reconcile
 """
 import fcntl
+import glob
 import json
 import os
 import socket
@@ -69,8 +73,11 @@ SESSION = os.environ.get("HERDR_SOCKET_PATH", "")
 # Session socket -> pane id -> {"status": activity, "at": seconds}. Every
 # session shares this state directory and pane ids repeat between sessions,
 # so entries are kept per session. "at" is missing until the pane's first
-# change after the session's first run.
+# change after the session's first run, unless its Claude conversation gave
+# one; "looked_up" records that the conversation was looked for.
 ACTIVITY_FILE = os.path.join(STATE_DIR, "activity.json")
+# Claude Code keeps each conversation in projects/<folder>/<session id>.jsonl.
+CLAUDE_DIR = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude")
 # Session sockets whose agents panel keeps Herdr's own order.
 ORDER_OFF_FILE = os.path.join(STATE_DIR, "order_off.json")
 
@@ -192,6 +199,60 @@ def turn(coalesce):
         yield True
 
 
+def claude_last_message(agent):
+    """When the agent's Claude conversation last had a message, in seconds,
+    or None.
+
+    Herdr knows a Claude agent's session id, which names its conversation's
+    file. Entries without a time, such as those Claude adds when it resumes
+    a conversation, don't count, and neither do meta messages Claude adds
+    itself.
+    """
+    session = agent.get("agent_session") or {}
+    name = os.path.basename(session.get("value") or "")
+    if session.get("agent") != "claude" or session.get("kind") != "id" or not name:
+        return None
+    pattern = os.path.join(glob.escape(CLAUDE_DIR), "projects", "*", glob.escape(name) + ".jsonl")
+    for path in glob.glob(pattern):
+        try:
+            return last_message_time(path)
+        except OSError:
+            return None
+    return None
+
+
+def last_message_time(path):
+    """The time of the file's last message, read from its end, as the file
+    can be many megabytes."""
+    with open(path, "rb") as f:
+        end = f.seek(0, os.SEEK_END)
+        size = 1 << 16
+        while True:
+            start = max(0, end - size)
+            f.seek(start)
+            lines = f.read(end - start).splitlines()
+            # The first line may start partway through an entry.
+            for line in reversed(lines[1:] if start else lines):
+                at = message_time(line)
+                if at is not None:
+                    return at
+            if not start:
+                return None
+            size *= 4
+
+
+def message_time(line):
+    """A conversation entry's time in seconds, if it is a message."""
+    try:
+        entry = json.loads(line)
+        if entry.get("type") not in ("user", "assistant") or entry.get("isMeta"):
+            return None
+        stamp = entry["timestamp"].replace("Z", "+00:00")
+        return int(datetime.fromisoformat(stamp).timestamp())
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return None
+
+
 def event_pane(event):
     """The pane whose agent's status change started this run, if one did."""
     if event != "pane.agent_status_changed":
@@ -224,6 +285,12 @@ def reconcile(event):
             if not first_run or agent["pane_id"] == changed_pane:
                 entry["at"] = int(now)
             panes[agent["pane_id"]] = entry
+        # Once Herdr knows the agent's session, look for its conversation once.
+        if "at" not in entry and not entry.get("looked_up") and agent.get("agent_session"):
+            entry["looked_up"] = True
+            at = claude_last_message(agent)
+            if at is not None:
+                entry["at"] = at
         if "at" in entry:
             report_time(agent, entry["at"], now)
 

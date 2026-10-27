@@ -91,8 +91,11 @@ herdr plugin link /path/to/agent-recency
 ```
 
 Herdr runs no startup hook when a plugin is linked: the order and times start
-with the next agent status change. As the plugin knows no earlier activity,
-only that agent gets a time then; the others get theirs as they next change.
+with the next agent status change. The plugin knows no earlier activity, so
+only that agent gets a time from it then. A Claude agent without a time gets
+the time of its conversation's last message, from Claude's own file under
+`~/.claude/projects/` (or `$CLAUDE_CONFIG_DIR`); other agents get theirs as
+they next change.
 
 ## Limitations
 
