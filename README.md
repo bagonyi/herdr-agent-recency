@@ -1,12 +1,14 @@
 # Agent Recency for Herdr
 
 Lists the agents in Herdr's agents panel by their last activity, latest
-first, and shows when that was:
+first, and shows when that was. Working agents come first, the one that
+started last on top:
 
 ```
  agents            recent
- ● gamma · 14:32
- ○ beta · 14:05
+ ● delta · 14:40
+ ● gamma · 14:21
+ ○ beta · 14:32
  ○ alpha · Mon 17:40
 ```
 
@@ -31,10 +33,13 @@ tokens:
   Between midnight and that run the agent shows no time.
 - `$last_at`: the same time in seconds, which the agents panel sorts by.
 
+While an agent works it also has a `$working` token, which puts it first.
+
 The plugin also sets the agents panel's order (Herdr's agent views), which
-the panel names `recent` where it otherwise says `grouped` or `priority`.
-Agents without a time follow those with one, in Herdr's own order of state
-changes. The order also applies to the previous/next agent keys.
+the panel names `recent` where it otherwise says `grouped` or `priority`:
+working agents first, the one that started last on top, then the others by
+their last activity. Agents without a time come last, in Herdr's own order
+of state changes. The order also applies to the previous/next agent keys.
 
 The plugin keeps each pane's last state and time in its state directory
 (`~/.local/state/herdr/plugins/bagonyi.agent-recency/activity.json` by

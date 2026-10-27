@@ -1,6 +1,6 @@
 id = "bagonyi.agent-recency"
 name = "Agent Recency"
-version = "0.2.0"
+version = "0.3.0"
 min_herdr_version = "0.9.3"
 description = "Lists agents by their last activity and shows its time ($last in agent rows)"
 platforms = ["linux", "macos"]

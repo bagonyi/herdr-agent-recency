@@ -9,9 +9,11 @@ it started. Each change gets the time this script notices it.
 Agent rows show the time as the `$last` token: 14:32 today, Mon 14:32 in the
 past week, 12 Oct before that. Each label is reported to expire at the next
 midnight, so it never shows yesterday's time as today's; the next run
-reports it again in its new form. The agents panel lists the agent with the
-latest activity first, by the `$last_at` token (seconds since the epoch).
-Agents without a time follow, in Herdr's own order of state changes.
+reports it again in its new form. The agents panel lists working agents
+first, by the `$working` token, the one that started last on top. The others
+follow, the latest activity first, by the `$last_at` token (seconds since
+the epoch). Agents without a time come last, in Herdr's own order of state
+changes.
 
 Herdr runs this script on agent status changes, closed panes, tabs and
 spaces, and at startup. Every run reconciles all agents from Herdr's current
@@ -58,11 +60,15 @@ PLUGIN_ID = os.environ.get("HERDR_PLUGIN_ID", "bagonyi.agent-recency")
 SOURCE = f"plugin:{PLUGIN_ID}"
 LABEL_TOKEN = "last"
 TIME_TOKEN = "last_at"
+# Set while the agent works, so the agents panel lists it first.
+WORKING_TOKEN = "working"
 VIEW = {
     "source": SOURCE,
     # Shown where the agents panel names its order.
     "label": "recent",
     "sort": [
+        # Agents with the token come before those without.
+        {"field": {"token": WORKING_TOKEN}, "order": "desc"},
         {"field": {"token": TIME_TOKEN}, "order": "desc"},
         {"field": "state_change_seq", "order": "desc"},
     ],
@@ -160,6 +166,19 @@ def report_time(agent, at, now):
         herdr("pane", "report-metadata", pane_id, "--source", SOURCE,
               "--token", f"{LABEL_TOKEN}={label}",
               "--ttl-ms", str(ms_until_midnight(now)))
+
+
+def report_working(agent):
+    """Give a working agent the `working` token, and take it away once the
+    agent stops."""
+    pane_id, tokens = agent["pane_id"], agent.get("tokens") or {}
+    working = agent["agent_status"] == "working"
+    if working and tokens.get(WORKING_TOKEN) != "working":
+        herdr("pane", "report-metadata", pane_id, "--source", SOURCE,
+              "--token", f"{WORKING_TOKEN}=working")
+    elif not working and WORKING_TOKEN in tokens:
+        herdr("pane", "report-metadata", pane_id, "--source", SOURCE,
+              "--clear-token", WORKING_TOKEN)
 
 
 def order_on(toggle):
@@ -276,6 +295,7 @@ def reconcile(event):
         panes = {pane_id: entry for pane_id, entry in panes.items() if pane_id in existing}
 
     for agent in herdr("agent", "list")["agents"]:
+        report_working(agent)
         status = ACTIVITY.get(agent["agent_status"])
         if status is None:
             continue
