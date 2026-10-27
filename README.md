@@ -50,6 +50,18 @@ rows = [["state_icon", "workspace", "tab", "$last"], ["terminal_title_stripped"]
 
 then reload the config (`prefix+shift+r`).
 
+On [Herdrsson](https://github.com/bagonyi/herdrsson/blob/herdrsson/FORK.md), the time can
+instead show as the time since then, counting up as you watch (`10s ago` in steps of 10
+seconds, `5m ago`, `3h ago`, `2d ago`; `working` while the agent works), by putting
+`$last_at` in the row with `format = "ago"`:
+
+```toml
+[ui.sidebar.agents]
+rows = [["state_icon", "workspace", "tab", { token = "$last_at", format = "ago" }]]
+```
+
+Unlike `$last`, it doesn't expire at midnight. Stock Herdr rejects `format` in the config.
+
 ## Turning the order off
 
 The panel's own `grouped`/`priority` switch has no effect while the plugin
