@@ -86,6 +86,8 @@ The times keep updating either way.
 - Herdr 0.9.3 or later
 - macOS or Linux
 - `python3` on `PATH` (standard library only)
+- Only for the `5m ago` time: [Herdrsson](https://github.com/bagonyi/herdrsson/blob/herdrsson/FORK.md),
+  my fork of Herdr (see [Showing the time](#showing-the-time))
 
 Tested on macOS with Herdr 0.9.5.
 
@@ -120,3 +122,7 @@ herdr plugin unlink bagonyi.agent-recency
 Herdr drops the plugin's order at once. The `$last` times stay until they
 expire at midnight or the server restarts; remove `$last` from the agent rows
 too.
+
+## License
+
+Copyright 2026 David Bagonyi. Licensed under the [Apache License 2.0](LICENSE).
