@@ -18,6 +18,12 @@ neither is its output while it works, so a working agent's time is when it
 started. The time reads 14:32 for today, Mon 14:32 for the past week and
 12 Oct before that.
 
+![Herdrsson's agents panel listing nine agents, the two working ones first, then by their last activity, from 3m ago to 1d ago](screenshot.png)
+
+The agents panel's order (`recent`) and times come from this plugin, the times shown as
+`3m ago` by [Herdrsson, my fork of Herdr](https://github.com/bagonyi/herdrsson/blob/herdrsson/FORK.md) (see [Showing the time](#showing-the-time)).
+The tab markers come from [Tab Status](https://github.com/bagonyi/herdr-tab-status) and the bars from [Claude Cache Timer](https://github.com/bagonyi/herdr-claude-cache-timer).
+
 ## How it works
 
 Herdr runs the plugin when an agent's status changes, when a pane, tab or
