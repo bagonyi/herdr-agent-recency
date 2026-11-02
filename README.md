@@ -18,7 +18,7 @@ neither is its output while it works, so a working agent's time is when it
 started. The time reads 14:32 for today, Mon 14:32 for the past week and
 12 Oct before that.
 
-![Herdrsson's agents panel listing ten agents, the two working ones first, then by their last activity, from 2m ago to 1d ago, the two idle for hours on one line each under an earlier line](screenshot.png)
+![Herdrsson's agents panel listing ten agents, the two working ones first, then by their last activity, from 7m ago to 1d ago, the two idle for hours on one line each under an earlier line](screenshot.png)
 
 The agents panel's order (`recent`) and times come from this plugin, the times shown as
 `3m ago` by [Herdrsson, my fork of Herdr](https://github.com/bagonyi/herdrsson/blob/herdrsson/FORK.md) (see [Showing the time](#showing-the-time)).
