@@ -22,7 +22,7 @@ started. The time reads 14:32 for today, Mon 14:32 for the past week and
 
 The agents panel's order (`recent`) and times come from this plugin, the times shown as
 `3m ago` by [Herdrsson, my fork of Herdr](https://github.com/bagonyi/herdrsson/blob/herdrsson/FORK.md) (see [Showing the time](#showing-the-time)).
-The tab markers come from [Tab Status](https://github.com/bagonyi/herdr-tab-status), the context sizes and cache times from [Claude Cache Timer](https://github.com/bagonyi/herdr-claude-cache-timer) and the agents at work from [Claude Subagents](https://github.com/bagonyi/herdr-claude-subagents).
+The context sizes and cache times come from [Claude Cache Timer](https://github.com/bagonyi/herdr-claude-cache-timer) and the agents at work from [Claude Subagents](https://github.com/bagonyi/herdr-claude-subagents). The tab markers came from Tab Status, a plugin Herdrsson has since replaced with its own status dots.
 
 ## How it works
 
